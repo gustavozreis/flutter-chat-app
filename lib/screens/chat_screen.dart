@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 final _firestore = FirebaseFirestore.instance;
+User? loggedUser;
 
 class ChatScreen extends StatefulWidget {
   static const String id = 'chat_screen';
@@ -15,7 +16,6 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final messageTextController = TextEditingController();
   final _auth = FirebaseAuth.instance;
-  User? loggedUser;
   String messageText = '';
 
   void getCurrentUser() async {
@@ -137,9 +137,21 @@ class MessageStream extends StatelessWidget {
 
         for (var message in messages!) {
           final messageText = message.get('text');
-          final messageSender = message.get('sender');
-          final messageBubble =
-              MessageBubble(sender: messageSender, text: messageText);
+          final messageSender = message.get('sender') as String;
+
+          final currentUser = loggedUser?.email;
+          bool isMe;
+          if (currentUser == messageSender) {
+            isMe = true;
+          } else {
+            isMe = false;
+          }
+
+          final messageBubble = MessageBubble(
+            sender: messageSender,
+            text: messageText,
+            isMe: isMe,
+          );
           messageBubbles.add(messageBubble);
         }
 
@@ -156,38 +168,71 @@ class MessageStream extends StatelessWidget {
 }
 
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({Key? key, required this.sender, required this.text})
+  const MessageBubble(
+      {Key? key, required this.sender, required this.text, required this.isMe})
       : super(key: key);
 
   final String sender;
   final String text;
+  final bool isMe;
+
+  Color bubbleColor() {
+    if (isMe == true) {
+      return Colors.white;
+    } else {
+      return Colors.lightBlueAccent;
+    }
+  }
+
+  Color textColor() {
+    if (isMe == true) {
+      return Colors.black54;
+    } else {
+      return Colors.white;
+    }
+  }
+
+  BorderRadiusGeometry typeOfBorder() {
+    if (isMe) {
+      return const BorderRadius.only(
+          topLeft: Radius.circular(30.0),
+          bottomLeft: Radius.circular(30.0),
+          bottomRight: Radius.circular(30.0));
+    } else {
+      return const BorderRadius.only(
+          topRight: Radius.circular(30.0),
+          bottomLeft: Radius.circular(30.0),
+          bottomRight: Radius.circular(30.0));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(10.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Text(
             sender,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.black54,
               fontSize: 12.0,
             ),
           ),
           Material(
             elevation: 5.0,
-            borderRadius: BorderRadius.circular(30.0),
-            color: Colors.lightBlueAccent,
+            borderRadius: typeOfBorder(),
+            color: bubbleColor(),
             child: Padding(
               padding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 30.0),
+                  const EdgeInsets.symmetric(vertical: 10.0, horizontal: 30.0),
               child: Text(
                 text,
                 style: TextStyle(
-                  fontSize: 20.0,
-                  color: Colors.white,
+                  fontSize: 18.0,
+                  color: textColor(),
                 ),
               ),
             ),
